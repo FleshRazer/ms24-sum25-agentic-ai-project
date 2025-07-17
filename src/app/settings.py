@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     LLM_PROVIDER: Literal["google", "mistral"] = "google"
 
     GOOGLE_API_KEY: str | None = None
-    GOOGLE_MODEL: str = "gemini-2.5-flash"
+    GOOGLE_MODEL: str = "gemini-2.5-pro"
 
     MISTRAL_API_KEY: str | None = None
     MISTRAL_MODEL: str = "mistral-large-latest"
