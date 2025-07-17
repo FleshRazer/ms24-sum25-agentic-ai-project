@@ -10,7 +10,7 @@ from typing_extensions import TypedDict
 
 from app.callbacks import callbacks
 from app.graph.swarm import swarm
-from app.llm import llm
+from app.llm import llm, model
 from app.schemas import ItemList
 from app.settings import settings
 
@@ -78,9 +78,11 @@ def conv_markdown(state: GraphState) -> GraphState:
 
 def save_markdown(state: GraphState) -> GraphState:
     if state["document_markdown"] is not None:
-        with open(
-            state["output_dir"] / "md" / (state["output_filename"] + ".md"), mode="w"
-        ) as f:
+        write_path = (
+            state["output_dir"] / "md" / model / (state["output_filename"] + ".md")
+        )
+        write_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(write_path, mode="w") as f:
             f.write(state["document_markdown"])
 
     return {}  # type: ignore
@@ -108,9 +110,11 @@ def parse_items(state: GraphState) -> GraphState:
     )
     result = chain.invoke({"document_markdown": markdown})
 
-    with open(
-        state["output_dir"] / "items" / (state["output_filename"] + ".json"), mode="w"
-    ) as f:
+    write_path = (
+        state["output_dir"] / "items" / model / (state["output_filename"] + ".json")
+    )
+    write_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(write_path, mode="w") as f:
         f.write(result.model_dump_json(indent=2, by_alias=True))
 
     return {}  # type: ignore

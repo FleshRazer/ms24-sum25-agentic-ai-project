@@ -14,7 +14,7 @@ uv pip install -e .
 
 ### Update `.env` file
 
-- Set Google AI Studio API key
+- Set Google AI Studio or Mistral API key
 - Set Langfuse keys if you are going to use it
 
 ### Run the agent
@@ -22,7 +22,8 @@ uv pip install -e .
 ```bash
 uv run python3 src/app/main.py \
     --docx_path=data/kamaz_energo/docx/001.docx \
-    --output_dir=data/kamaz_energo
+    --output_dir=data/kamaz_energo \
+    --llm-provider=google
 ```
 
 ## Self-host Langfuse using Docker (Optional)
