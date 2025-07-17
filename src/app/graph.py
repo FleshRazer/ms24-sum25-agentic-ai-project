@@ -5,7 +5,6 @@ from langchain.output_parsers import (
     PydanticOutputParser,
 )
 from langchain.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langfuse import Langfuse
 from langfuse.langchain import CallbackHandler
 from langgraph.graph import StateGraph
@@ -14,9 +13,25 @@ from typing_extensions import TypedDict
 from app.schemas import ItemList
 from app.settings import settings
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash", google_api_key=settings.GOOGLE_API_KEY
-)
+if settings.LLM_PROVIDER not in ['google', 'mistral']:
+    raise ValueError(f"Invalid LLM_PROVIDER: {settings.LLM_PROVIDER}")
+
+if settings.LLM_PROVIDER == 'google':
+    if not settings.GOOGLE_API_KEY:
+        raise ValueError("GOOGLE_API_KEY is required for Google provider. Please set it in the environment.")
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    llm = ChatGoogleGenerativeAI(
+        model=settings.GOOGLE_MODEL,
+        google_api_key=settings.GOOGLE_API_KEY
+    )
+elif settings.LLM_PROVIDER == 'mistral':
+    if not settings.MISTRAL_API_KEY:
+        raise ValueError("MISTRAL_API_KEY is required for Mistral provider. Please set it in the environment.")
+    from langchain_mistralai import ChatMistralAI
+    llm = ChatMistralAI(
+        model=settings.MISTRAL_MODEL,
+        api_key=settings.MISTRAL_API_KEY
+    )
 
 
 class GraphState(TypedDict):
@@ -81,8 +96,10 @@ def conv_markdown(state: GraphState) -> GraphState:
 
 def save_markdown(state: GraphState) -> GraphState:
     if state["markdown"] is not None:
+        write_path = state["output_dir"] / "md" / (settings.MISTRAL_MODEL if settings.LLM_PROVIDER == 'mistral' else settings.GOOGLE_MODEL) / (state["output_filename"] + ".md")
+        write_path.parent.mkdir(parents=True, exist_ok=True)
         with open(
-            state["output_dir"] / "md" / (state["output_filename"] + ".md"), mode="w"
+            write_path, mode="w"
         ) as f:
             f.write(state["markdown"])
 
@@ -105,9 +122,10 @@ def parse_items(state: GraphState) -> GraphState:
 
     chain = prompt | llm | parser
     result = chain.invoke({"document_markdown": state["markdown"]})
-
+    write_path = state["output_dir"] / "items" / (settings.MISTRAL_MODEL if settings.LLM_PROVIDER == 'mistral' else settings.GOOGLE_MODEL) / (state["output_filename"] + ".json")
+    write_path.parent.mkdir(parents=True, exist_ok=True)
     with open(
-        state["output_dir"] / "items" / (state["output_filename"] + ".json"), mode="w"
+        write_path, mode="w"
     ) as f:
         f.write(result.model_dump_json(indent=2, by_alias=True))
 
@@ -127,17 +145,18 @@ graph_builder.add_edge("conv_markdown", "parse_items")
 
 graph_builder.set_entry_point("validate_content")
 
-langfuse = Langfuse(
-    secret_key=settings.LANGFUSE_SECRET_KEY,
-    public_key=settings.LANGFUSE_PUBLIC_KEY,
-    host="http://localhost:3000",
-)
+# langfuse = Langfuse(
+#     secret_key=settings.LANGFUSE_SECRET_KEY,
+#     public_key=settings.LANGFUSE_PUBLIC_KEY,
+#     host="http://localhost:3000",
+# )
 
-if langfuse.auth_check():
-    print("Langfuse client is authenticated and ready!")
-else:
-    print("Authentication failed. Please check your credentials and host.")
+# if langfuse.auth_check():
+#     print("Langfuse client is authenticated and ready!")
+# else:
+#     print("Authentication failed. Please check your credentials and host.")
 
-langfuse_handler = CallbackHandler()
+# langfuse_handler = CallbackHandler()
 
-graph = graph_builder.compile().with_config({"callbacks": [langfuse_handler]})
+# graph = graph_builder.compile().with_config({"callbacks": [langfuse_handler]})
+graph = graph_builder.compile()
