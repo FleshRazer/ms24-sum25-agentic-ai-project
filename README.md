@@ -14,6 +14,7 @@ uv pip install -e .
 
 ### Update `.env` file
 
+- Set LLM provider: `LLM_PROVIDER=google` or `LLM_PROVIDER=mistral`
 - Set Google AI Studio or Mistral API key
 - Set Langfuse keys if you are going to use it
 
@@ -23,7 +24,15 @@ uv pip install -e .
 uv run python3 src/app/main.py \
     --docx_path=data/kamaz_energo/docx/001.docx \
     --output_dir=data/kamaz_energo \
-    --llm-provider=google
+```
+
+### Benchmark the provider-based agents against golden test set
+
+```bash
+uv run python3 src/app/benchmark.py \
+    --extracted_set_dir=data/kamaz_energo/items \
+    --test_set_dir=data/kamaz_energo/test/items \
+    --results_dir=data/kamaz_energo/benchmark
 ```
 
 ## Self-host Langfuse using Docker (Optional)

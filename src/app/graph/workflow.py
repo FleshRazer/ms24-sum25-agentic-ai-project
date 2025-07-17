@@ -67,7 +67,7 @@ def conv_markdown(state: GraphState) -> GraphState:
 
     chain = prompt | llm
     result = chain.invoke({"document_html": state["document_html"]})
-
+    print(result)
     pattern = r"```markdown\s*(.*?)\s*```"
     match = re.search(pattern, result.text(), re.DOTALL)
     if match is not None:
@@ -98,7 +98,7 @@ def parse_items(state: GraphState) -> GraphState:
             "```\n"
             "{format_instructions}"
         ),
-        input_variables=["document"],
+        input_variables=["document_markdown"],
         partial_variables={"format_instructions": parser.get_format_instructions()},
     )
 

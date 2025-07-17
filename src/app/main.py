@@ -73,14 +73,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--docx_path", type=Path, help="Path to the DOCX file")
     parser.add_argument("--output_dir", type=Path, help="Directory to save the outputs")
-    parser.add_argument(
-        "--llm-provider",
-        type=str,
-        default="google",
-        choices=["google", "mistral"],
-        help="LLM provider to use (default: google)",
-    )
     args = parser.parse_args()
 
-    settings.LLM_PROVIDER = args.llm_provider
     main(args.docx_path, args.output_dir)
