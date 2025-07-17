@@ -505,6 +505,19 @@ wheels = [
 ]
 
 [[package]]
+name = "langgraph-swarm"
+version = "0.0.12"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langchain-core" },
+    { name = "langgraph" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b1/95/186fb298ed0845db713cab52469d2d14bed68e54b3c38808b0838af570b0/langgraph_swarm-0.0.12.tar.gz", hash = "sha256:a9b3fa7334e030ad51c2c8dd854f12d9164423dda0632b372e003b990d5f55d6", size = 11124, upload-time = "2025-07-09T14:14:44.243Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/07/a408ed290e7852ecea361cb4f9fb353259fca1db1d8ca49c5f10dd86694a/langgraph_swarm-0.0.12-py3-none-any.whl", hash = "sha256:7b45f95d538f9f6bf631e4d3c8e25ca2477fda16f63581c9cf04a390fc395b7e", size = 9461, upload-time = "2025-07-09T14:14:42.732Z" },
+]
+
+[[package]]
 name = "langsmith"
 version = "0.4.4"
 source = { registry = "https://pypi.org/simple" }
@@ -543,6 +556,7 @@ dependencies = [
     { name = "langchain", extra = ["google-genai"] },
     { name = "langfuse" },
     { name = "langgraph" },
+    { name = "langgraph-swarm" },
     { name = "mammoth" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -561,6 +575,7 @@ requires-dist = [
     { name = "langchain", extras = ["google-genai"], specifier = ">=0.3.26" },
     { name = "langfuse", specifier = ">=3.1.3" },
     { name = "langgraph", specifier = ">=0.5.1" },
+    { name = "langgraph-swarm", specifier = ">=0.0.12" },
     { name = "mammoth", specifier = ">=1.9.1" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },

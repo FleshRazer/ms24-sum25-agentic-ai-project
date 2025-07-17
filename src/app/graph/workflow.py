@@ -5,23 +5,20 @@ from langchain.output_parsers import (
     PydanticOutputParser,
 )
 from langchain.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langfuse import Langfuse
-from langfuse.langchain import CallbackHandler
 from langgraph.graph import StateGraph
 from typing_extensions import TypedDict
 
+from app.callbacks import callbacks
+from app.graph.swarm import swarm
+from app.llm import llm
 from app.schemas import ItemList
 from app.settings import settings
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash", google_api_key=settings.GOOGLE_API_KEY
-)
-
 
 class GraphState(TypedDict):
-    html: str | None
-    markdown: str | None
+    document_html: str | None
+    document_markdown: str | None
+    items_markdown: str | None
     output_dir: Path
     output_filename: str
 
@@ -48,7 +45,7 @@ def validate_content(state: GraphState) -> GraphState:
     )
 
     chain = prompt | llm | parser
-    result = chain.invoke({"document_html": state["html"]})
+    result = chain.invoke({"document_html": state["document_html"]})
 
     if not result.is_valid:
         raise ValueError(
@@ -69,22 +66,22 @@ def conv_markdown(state: GraphState) -> GraphState:
     )
 
     chain = prompt | llm
-    result = chain.invoke({"document_html": state["html"]})
+    result = chain.invoke({"document_html": state["document_html"]})
 
     pattern = r"```markdown\s*(.*?)\s*```"
     match = re.search(pattern, result.text(), re.DOTALL)
     if match is not None:
         content = match.group(1).strip()
 
-    return {"markdown": content}  # type: ignore
+    return {"document_markdown": content}  # type: ignore
 
 
 def save_markdown(state: GraphState) -> GraphState:
-    if state["markdown"] is not None:
+    if state["document_markdown"] is not None:
         with open(
             state["output_dir"] / "md" / (state["output_filename"] + ".md"), mode="w"
         ) as f:
-            f.write(state["markdown"])
+            f.write(state["document_markdown"])
 
     return {}  # type: ignore
 
@@ -104,7 +101,12 @@ def parse_items(state: GraphState) -> GraphState:
     )
 
     chain = prompt | llm | parser
-    result = chain.invoke({"document_markdown": state["markdown"]})
+    markdown = (
+        state["items_markdown"]
+        if settings.ENABLE_REVIEWER
+        else state["document_markdown"]
+    )
+    result = chain.invoke({"document_markdown": markdown})
 
     with open(
         state["output_dir"] / "items" / (state["output_filename"] + ".json"), mode="w"
@@ -114,30 +116,55 @@ def parse_items(state: GraphState) -> GraphState:
     return {}  # type: ignore
 
 
-graph_builder = StateGraph(GraphState)
+if settings.ENABLE_REVIEWER:
 
-graph_builder.add_node("validate_content", validate_content)
-graph_builder.add_node("conv_markdown", conv_markdown)
-graph_builder.add_node("save_markdown", save_markdown)
-graph_builder.add_node("parse_items", parse_items)
+    def call_swarm(state: GraphState):
+        swarm_state = swarm.invoke(
+            {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Procurement technical specification:\n\n"
+                            f"```markdown\n"
+                            f"{state['document_markdown']}\n"
+                            f"```\n"
+                        ),
+                    }
+                ],
+            },
+            {"configurable": {"thread_id": "1"}},
+        )
 
-graph_builder.add_edge("validate_content", "conv_markdown")
-graph_builder.add_edge("conv_markdown", "save_markdown")
-graph_builder.add_edge("conv_markdown", "parse_items")
+        return {"items_markdown": swarm_state["messages"][-1].content}
 
-graph_builder.set_entry_point("validate_content")
+    workflow = StateGraph(GraphState)
 
-langfuse = Langfuse(
-    secret_key=settings.LANGFUSE_SECRET_KEY,
-    public_key=settings.LANGFUSE_PUBLIC_KEY,
-    host="http://localhost:3000",
-)
+    workflow.add_node("validate_content", validate_content)
+    workflow.add_node("conv_markdown", conv_markdown)
+    workflow.add_node("save_markdown", save_markdown)
+    workflow.add_node("call_swarm", call_swarm)
+    workflow.add_node("parse_items", parse_items)
 
-if langfuse.auth_check():
-    print("Langfuse client is authenticated and ready!")
+    workflow.add_edge("validate_content", "conv_markdown")
+    workflow.add_edge("conv_markdown", "save_markdown")
+    workflow.add_edge("conv_markdown", "call_swarm")
+    workflow.add_edge("call_swarm", "parse_items")
+
+    workflow.set_entry_point("validate_content")
+
 else:
-    print("Authentication failed. Please check your credentials and host.")
+    workflow = StateGraph(GraphState)
 
-langfuse_handler = CallbackHandler()
+    workflow.add_node("validate_content", validate_content)
+    workflow.add_node("conv_markdown", conv_markdown)
+    workflow.add_node("save_markdown", save_markdown)
+    workflow.add_node("parse_items", parse_items)
 
-graph = graph_builder.compile().with_config({"callbacks": [langfuse_handler]})
+    workflow.add_edge("validate_content", "conv_markdown")
+    workflow.add_edge("conv_markdown", "save_markdown")
+    workflow.add_edge("conv_markdown", "parse_items")
+
+    workflow.set_entry_point("validate_content")
+
+graph = workflow.compile().with_config({"callbacks": callbacks})

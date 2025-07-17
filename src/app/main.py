@@ -6,7 +6,7 @@ import mammoth
 from bs4 import BeautifulSoup
 from tidylib import tidy_document
 
-from app.graph import graph
+from app.graph.workflow import graph
 
 
 def read_docx_as_html(docx_path):
@@ -57,7 +57,7 @@ def main(docx_path, output_dir):
         f.write(document_html)
 
     initial_state = {
-        "html": document_html,
+        "document_html": document_html,
         "output_dir": output_dir,
         "output_filename": output_filename,
     }

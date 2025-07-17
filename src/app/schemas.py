@@ -11,9 +11,7 @@ class Item(BaseModel):
     type: str | None = Field(..., alias="Тип")
     quantity: float | None = Field(..., alias="Количество")
     unit_of_measurement: str | None = Field(..., alias="Единица измерения")
-    has_analogues: str | None = Field(
-        ..., alias="Наличие аналогов", pattern="^(Да|Нет)$"
-    )
+    has_analogues: str | None = Field(..., alias="Наличие аналогов")
     okdp2_code: str | None = Field(..., alias="Код ОКДП2")
     novelty_info: str | None = Field(..., alias="Сведения о новизне")
     application_area: str | None = Field(..., alias="Область применения")
